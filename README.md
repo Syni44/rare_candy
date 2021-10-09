@@ -1,3 +1,4 @@
+![Hex version](https://img.shields.io/hexpm/v/rare_candy "Hex version")
 # RareCandy
 
 A library for fetching Pokemon data in Elixir. This library is **still heavily a work in progress.**
