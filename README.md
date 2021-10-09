@@ -1,11 +1,11 @@
 # RareCandy
 
-A library for fetching Pokemon data in Elixir.
+A library for fetching Pokemon data in Elixir. This library is **still heavily a work in progress.**
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `rare_candy` to your list of dependencies in `mix.exs`:
+The package can be installed by adding `rare_candy` to your
+list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
@@ -15,6 +15,42 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/rare_candy](https://hexdocs.pm/rare_candy).
+## Documentation
+
+> [https://hexdocs.pm/rare_candy](https://hexdocs.pm/rare_candy)
+
+## Examples
+
+```elixir
+iex(1)> {:ok, pkmn} = RareCandy.Api.get_pokemon_by_id(490)
+{:ok,
+ %Pokemon{
+   abilities: ["hydration"],
+   forms: ["manaphy"],
+   height: 3,
+   id: 490,
+   moves: ["supersonic", "surf", "ice-beam", "blizzard", "bubble-beam",
+    "hyper-beam", "toxic", "psychic", "double-team", "light-screen", "reflect",
+    "waterfall", "swift", "bubble", "flash", "acid-armor", "rest", "substitute",
+    "snore", "protect", "mud-slap", "icy-wind", "endure", "charm", "swagger",
+    "sleep-talk", "heal-bell", "return", "frustration", "safeguard",
+    "hidden-power", "rain-dance", "psych-up", "ancient-power", "shadow-ball",
+    "whirlpool", "uproar", "hail", "facade", "helping-hand", "knock-off",
+    "skill-swap", "secret-power", ...],
+   name: "manaphy",
+   stats: %{
+     "attack" => 100,
+     "defense" => 100,
+     "hp" => 100,
+     "special-attack" => 100,
+     "special-defense" => 100,
+     "speed" => 100
+   },
+   types: ["water"],
+   weight: 14
+ }}
+iex(2)> pkmn.name
+"manaphy"
+iex(3)> Enum.member?(pkmn.moves, "u-turn")
+true
+```
