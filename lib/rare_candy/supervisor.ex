@@ -12,6 +12,6 @@ defmodule RareCandy.Supervisor do
 
     # See http://elixir-lang.org/docs/stable/Supervisor.Behaviour.html
     # for other strategies and supported options
-    {:ok, _pid} = Supervisor.start_link(children, strategy: :one_for_one)
+    Supervisor.init(children, strategy: :one_for_one)
   end
 end

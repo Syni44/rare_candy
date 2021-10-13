@@ -44,8 +44,8 @@ defmodule RareCandy.Api do
         #     height: 11,
         #     id: 510
         #   ...
-        IO.puts(pkmn.name <> " was caught!")
-        # liepard was caught!
+        IO.puts(String.capitalize(pkmn.name) <> " was caught!")
+        # Liepard was caught!
         # :ok
   """
 
@@ -79,9 +79,8 @@ defmodule RareCandy.Api do
   """
   @spec get_pokemon_by_id(integer() | String.t()) :: {:ok, %Pokemon{}}
   def get_pokemon_by_id(id) do
-    response = "https://pokeapi.co/api/v2/pokemon/" <> Integer.to_string(id)
+    "https://pokeapi.co/api/v2/pokemon/" <> Integer.to_string(id)
     |> HTTPoison.get!
-
-    get_pokemon(response)
+    |> get_pokemon
   end
 end
