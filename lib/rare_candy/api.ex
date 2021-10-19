@@ -47,11 +47,26 @@ defmodule RareCandy.Api do
         IO.puts(String.capitalize(pkmn.name) <> " was caught!")
         # Liepard was caught!
         # :ok
+
+        RareCandy.Api.find_pokemon("fossrass")
+        # {:ok,
+        #  %Pokemon{
+        #    abilities: ["snow-cloak", "cursed-body"],
+        #    forms: ["froslass"],
+        #    height: 13,
+        #    id: 478,
+        #  ...
   """
 
   require Logger
 
   @type json :: String.t()
+
+  defp get_list_of_names() do
+    json = HTTPoison.get!("https://pokeapi.co/api/v2/pokemon?limit=9999&offset=0")
+    map = Poison.decode!(json.body)
+    Enum.map(map["results"], fn pkmn -> pkmn["name"] end)
+  end
 
   defp get_pokemon(json) do
     pkmn = Poison.decode!(json.body, as: %Pokemon{})
@@ -82,5 +97,20 @@ defmodule RareCandy.Api do
     "https://pokeapi.co/api/v2/pokemon/" <> Integer.to_string(id)
     |> HTTPoison.get!
     |> get_pokemon
+  end
+
+  @doc ~S"""
+  Will return the Pokemon struct that's name is nearest to the string input query.
+
+  Utilizes String.jaro_distance.
+  """
+  def find_pokemon(query) do
+    Enum.map(get_list_of_names(), fn str ->
+      String.jaro_distance(query, str)
+    end)
+    |> Enum.with_index(1)
+    |> Enum.max
+    |> elem(1)
+    |> get_pokemon_by_id
   end
 end
