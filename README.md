@@ -11,7 +11,7 @@ list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:rare_candy, "~> 0.0.1"}
+    {:rare_candy, "~> 0.1.0"}
   ]
 end
 ```
