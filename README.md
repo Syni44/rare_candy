@@ -11,7 +11,7 @@ list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:rare_candy, "~> 0.1.0"}
+    {:rare_candy, "~> 0.1.2"}
   ]
 end
 ```
@@ -30,6 +30,7 @@ iex(1)> {:ok, pkmn} = RareCandy.Api.get_pokemon_by_id(490)
    forms: ["manaphy"],
    height: 3,
    id: 490,
+   img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/490.png",
    moves: ["supersonic", "surf", "ice-beam", "blizzard", "bubble-beam",
     "hyper-beam", "toxic", "psychic", "double-team", "light-screen", "reflect",
     "waterfall", "swift", "bubble", "flash", "acid-armor", "rest", "substitute",
