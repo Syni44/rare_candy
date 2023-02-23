@@ -52,6 +52,6 @@ iex(1)> {:ok, pkmn} = RareCandy.Api.get_pokemon_by_id(490)
  }}
 iex(2)> pkmn.name
 "manaphy"
-iex(3)> Enum.member?(pkmn.moves, "u-turn")
+iex(3)> "u-turn" in pkmn.moves
 true
 ```

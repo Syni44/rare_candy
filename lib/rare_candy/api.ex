@@ -62,6 +62,40 @@ defmodule RareCandy.Api do
 
   @type json :: String.t()
 
+  @spec get_pokemon_by_id(integer) :: {:ok, map}
+  @doc ~S"""
+  Fetches data from PokeApi using the desired Pokemon's dex no as an argument.
+  """
+  def get_pokemon_by_id(id) do
+    "https://pokeapi.co/api/v2/pokemon/" <> Integer.to_string(id)
+    |> HTTPoison.get!
+    |> get_pokemon
+  end
+
+  @spec find_pokemon(any) :: {:ok, map}
+  @doc ~S"""
+  Will return the Pokemon struct that's name is nearest to the string input query.
+
+  Utilizes String.jaro_distance.
+  """
+  def find_pokemon(query) do
+    Enum.map(get_list_of_names(), fn str ->
+      String.jaro_distance(query, str)
+    end)
+    |> Enum.with_index(1)
+    |> Enum.max
+    |> elem(1)
+    |> get_pokemon_by_id
+  end
+
+  # TODO: too slow -- wip
+  # def get_pokemon_with_move(move) do
+  #   for pkmn <- get_list_of_names(), into: [] do
+  #     {_, p} = find_pokemon(pkmn)
+  #     if (move in p.moves) do pkmn end
+  #   end
+  # end
+
   defp get_list_of_names() do
     json = HTTPoison.get!("https://pokeapi.co/api/v2/pokemon?limit=9999&offset=0")
     map = Poison.decode!(json.body)
@@ -85,32 +119,14 @@ defmodule RareCandy.Api do
     |> Map.update!(:stats, fn sts ->                # stats: format into map
       for stats <- sts, into: %{}, do: {stats["stat"]["name"], stats["base_stat"]}
     end)
+    |> Map.update!(:img, fn _ ->                    # image url. requires throwaway parameter?
+      Poison.decode!(json.body)
+      |> Map.fetch!("sprites")
+      |> Map.fetch!("other")
+      |> Map.fetch!("official-artwork")
+      |> Map.fetch!("front_default")
+    end)
 
     {:ok, pkmn}
-  end
-
-  @doc ~S"""
-  Fetches data from PokeApi using the desired Pokemon's dex no as an argument.
-  """
-  @spec get_pokemon_by_id(integer() | String.t()) :: {:ok, %Pokemon{}}
-  def get_pokemon_by_id(id) do
-    "https://pokeapi.co/api/v2/pokemon/" <> Integer.to_string(id)
-    |> HTTPoison.get!
-    |> get_pokemon
-  end
-
-  @doc ~S"""
-  Will return the Pokemon struct that's name is nearest to the string input query.
-
-  Utilizes String.jaro_distance.
-  """
-  def find_pokemon(query) do
-    Enum.map(get_list_of_names(), fn str ->
-      String.jaro_distance(query, str)
-    end)
-    |> Enum.with_index(1)
-    |> Enum.max
-    |> elem(1)
-    |> get_pokemon_by_id
   end
 end

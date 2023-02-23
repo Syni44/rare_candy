@@ -7,5 +7,6 @@ defmodule Pokemon do
     moves: [],
     abilities: [],
     forms: [],
-    stats: %{}
+    stats: %{},
+    img: ""
 end

@@ -36,4 +36,22 @@ defmodule RareCandy.Api.ApiFetchingTest do
 
     assert result == expected
   end
+
+  test "find_pokemon matches exacts" do
+    expected = "celebi"
+
+    {_, pkmn} = RareCandy.Api.find_pokemon("celebi")
+    result = pkmn.name
+
+    assert result == expected
+  end
+
+  test "gibberish finds anything viable" do
+    expected = :ok
+
+    {status, _pkmn} = RareCandy.Api.find_pokemon("lkjsgusoebn")
+    result = status
+
+    assert result == expected
+  end
 end
