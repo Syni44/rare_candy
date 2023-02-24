@@ -12,6 +12,7 @@ defmodule RareCandy.Api do
           forms: ["ho-oh"],
           height: 38,
           id: 250,
+          img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/250.png",
           moves: ["gust", "whirlwind", "fly", "double-edge", "roar", "flamethrower",
             "hyper-beam", "strength", "solar-beam", "thunderbolt", "thunder-wave",
             "thunder", "earthquake", "toxic", "psychic", "mimic", "double-team",
@@ -67,8 +68,8 @@ defmodule RareCandy.Api do
   Fetches data from PokeApi using the desired Pokemon's dex no as an argument.
   """
   def get_pokemon_by_id(id) do
-    "https://pokeapi.co/api/v2/pokemon/" <> Integer.to_string(id)
-    |> HTTPoison.get!
+    ("https://pokeapi.co/api/v2/pokemon/" <> Integer.to_string(id))
+    |> HTTPoison.get!()
     |> get_pokemon
   end
 
@@ -83,7 +84,7 @@ defmodule RareCandy.Api do
       String.jaro_distance(query, str)
     end)
     |> Enum.with_index(1)
-    |> Enum.max
+    |> Enum.max()
     |> elem(1)
     |> get_pokemon_by_id
   end
@@ -96,37 +97,58 @@ defmodule RareCandy.Api do
   #   end
   # end
 
+  # should be modified to account for species -> name: pokemon like "pumpkaboo" and "zygarde" break
   defp get_list_of_names() do
     json = HTTPoison.get!("https://pokeapi.co/api/v2/pokemon?limit=9999&offset=0")
     map = Poison.decode!(json.body)
     Enum.map(map["results"], fn pkmn -> pkmn["name"] end)
   end
 
+  # TODO: clarify name via %species{"name"} rather than "name" implication
   defp get_pokemon(json) do
-    pkmn = Poison.decode!(json.body, as: %Pokemon{})
-    |> Map.update!(:types, fn ts ->                 # get strictly type names into list
-      for types <- ts, do: types["type"]["name"]
-    end)
-    |> Map.update!(:moves, fn mov ->                # moves
-      for moves <- mov, do: moves["move"]["name"]
-    end)
-    |> Map.update!(:abilities, fn abs ->            # abilities
-      for abilities <- abs, do: abilities["ability"]["name"]
-    end)
-    |> Map.update!(:forms, fn fms ->                # forms
-      for forms <- fms, do: forms["name"]
-    end)
-    |> Map.update!(:stats, fn sts ->                # stats: format into map
-      for stats <- sts, into: %{}, do: {stats["stat"]["name"], stats["base_stat"]}
-    end)
-    |> Map.update!(:img, fn _ ->                    # image url. requires throwaway parameter?
-      Poison.decode!(json.body)
-      |> Map.fetch!("sprites")
-      |> Map.fetch!("other")
-      |> Map.fetch!("official-artwork")
-      |> Map.fetch!("front_default")
-    end)
+    {status, _} = Poison.decode(json.body, as: %Pokemon{})
 
-    {:ok, pkmn}
+    case status do
+      :ok ->
+        pkmn = Poison.decode!(json.body, as: %Pokemon{})
+        # get strictly type names into list
+        |> Map.update!(:types, fn ts ->
+          for types <- ts, do: types["type"]["name"]
+        end)
+        # moves
+        |> Map.update!(:moves, fn mov ->
+          for moves <- mov, do: moves["move"]["name"]
+        end)
+        # abilities
+        |> Map.update!(:abilities, fn abs ->
+          for abilities <- abs, do: abilities["ability"]["name"]
+        end)
+        # forms
+        |> Map.update!(:forms, fn fms ->
+          for forms <- fms, do: forms["name"]
+        end)
+        # stats: format into map
+        |> Map.update!(:stats, fn sts ->
+          for stats <- sts, into: %{}, do: {stats["stat"]["name"], stats["base_stat"]}
+        end)
+        # image url. requires throwaway parameter?
+        |> Map.update!(:img, fn _ ->
+          Poison.decode!(json.body)
+          |> Map.fetch!("sprites")
+          |> Map.fetch!("other")
+          |> Map.fetch!("official-artwork")
+          |> Map.fetch!("front_default")
+        end)
+        # species name over "name"
+        |> Map.update!(:name, fn _ ->
+          Poison.decode!(json.body)
+          |> Map.fetch!("species")
+          |> Map.fetch!("name")
+        end)
+
+        {:ok, pkmn}
+      _ ->
+        {status, %Pokemon{}}
+    end
   end
 end

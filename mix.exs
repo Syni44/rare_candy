@@ -5,7 +5,7 @@ defmodule RareCandy.MixProject do
     [
       app: :rare_candy,
       description: "library for fetching Pokemon data wrapping PokeAPI",
-      version: "0.1.2",
+      version: "0.1.3",
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
