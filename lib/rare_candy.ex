@@ -3,6 +3,6 @@ defmodule RareCandy do
   use HTTPoison.Base
 
   def start(_type, _args) do
-    RareCandy.Supervisor.start_link
+    RareCandy.Supervisor.start_link()
   end
 end

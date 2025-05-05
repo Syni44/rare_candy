@@ -62,31 +62,47 @@ defmodule RareCandy.Api do
   require Logger
 
   @type json :: String.t()
+  @type pokemon :: Pokemon.t()
 
-  @spec get_pokemon_by_id(integer) :: {:ok, map}
+  @spec get_pokemon_by_id(integer) :: {:ok, pokemon} | {:error, any}
   @doc ~S"""
   Fetches data from PokeApi using the desired Pokemon's dex no as an argument.
   """
   def get_pokemon_by_id(id) do
-    ("https://pokeapi.co/api/v2/pokemon/" <> Integer.to_string(id))
-    |> HTTPoison.get!()
-    |> get_pokemon
+    url = "https://pokeapi.co/api/v2/pokemon/#{id}"
+
+    case HTTPoison.get(url, []) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+        parse_pokemon_data(body)
+
+      {:ok, response} ->
+        Logger.error("HTTP Error: #{response.status_code}")
+        {:error, "HTTP Error: #{response.status_code}"}
+
+      {:error, reason} ->
+        Logger.error("HTTPoison Error: #{inspect(reason)}")
+        {:error, reason}
+    end
   end
 
-  @spec find_pokemon(any) :: {:ok, map}
+  @spec find_pokemon(any) :: {:ok, pokemon} | {:error, any}
   @doc ~S"""
   Will return the Pokemon struct that's name is nearest to the string input query.
 
   Utilizes String.jaro_distance.
   """
   def find_pokemon(query) do
-    Enum.map(get_list_of_names(), fn str ->
-      String.jaro_distance(query, str)
-    end)
-    |> Enum.with_index(1)
-    |> Enum.max()
-    |> elem(1)
-    |> get_pokemon_by_id
+    case get_list_of_names() do
+      {:ok, names} ->
+        names
+        |> Enum.map(fn name -> {name, String.jaro_distance(query, name)} end)
+        |> Enum.max_by(fn {_name, score} -> score end)
+        |> elem(0)
+        |> get_pokemon_by_name()
+
+      error ->
+        error
+    end
   end
 
   # TODO: too slow -- wip
@@ -97,58 +113,76 @@ defmodule RareCandy.Api do
   #   end
   # end
 
-  # should be modified to account for species -> name: pokemon like "pumpkaboo" and "zygarde" break
-  defp get_list_of_names() do
-    json = HTTPoison.get!("https://pokeapi.co/api/v2/pokemon?limit=9999&offset=0")
-    map = Poison.decode!(json.body)
-    Enum.map(map["results"], fn pkmn -> pkmn["name"] end)
+  defp get_pokemon_by_name(name) do
+    url = "https://pokeapi.co/api/v2/pokemon/#{name}"
+
+    case HTTPoison.get(url) do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+        parse_pokemon_data(body)
+
+      {:ok, response} ->
+        {:error, "HTTP Error: #{response.status_code}"}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
-  # TODO: clarify name via %species{"name"} rather than "name" implication
-  defp get_pokemon(json) do
-    {status, _} = Poison.decode(json.body, as: %Pokemon{})
+  defp get_list_of_names() do
+    case HTTPoison.get("https://pokeapi.co/api/v2/pokemon?limit=9999&offset=0") do
+      {:ok, %HTTPoison.Response{status_code: 200, body: body}} ->
+        {:ok, body |> Jason.decode!() |> Map.get("results", []) |> Enum.map(& &1["name"])}
 
-    case status do
-      :ok ->
-        pkmn = Poison.decode!(json.body, as: %Pokemon{})
-        # get strictly type names into list
-        |> Map.update!(:types, fn ts ->
-          for types <- ts, do: types["type"]["name"]
-        end)
-        # moves
-        |> Map.update!(:moves, fn mov ->
-          for moves <- mov, do: moves["move"]["name"]
-        end)
-        # abilities
-        |> Map.update!(:abilities, fn abs ->
-          for abilities <- abs, do: abilities["ability"]["name"]
-        end)
-        # forms
-        |> Map.update!(:forms, fn fms ->
-          for forms <- fms, do: forms["name"]
-        end)
-        # stats: format into map
-        |> Map.update!(:stats, fn sts ->
-          for stats <- sts, into: %{}, do: {stats["stat"]["name"], stats["base_stat"]}
-        end)
-        # image url. requires throwaway parameter?
-        |> Map.update!(:img, fn _ ->
-          Poison.decode!(json.body)
-          |> Map.fetch!("sprites")
-          |> Map.fetch!("other")
-          |> Map.fetch!("official-artwork")
-          |> Map.fetch!("front_default")
-        end)
-        # species name over "name"
-        |> Map.update!(:name, fn _ ->
-          Poison.decode!(json.body)
-          |> Map.fetch!("species")
-          |> Map.fetch!("name")
-        end)
+      {:ok, response} ->
+        {:error, "HTTP Error: #{response.status_code}"}
 
-        {:ok, pkmn}
-      _ ->
-        {status, %Pokemon{}}
+      {:error, reason} ->
+        {:error, reason}
     end
+  end
+
+  defp parse_pokemon_data(body) do
+    case Jason.decode(body) do
+      {:ok, json_map} ->
+        pokemon = %Pokemon{
+          id: json_map["id"],
+          name: json_map["name"],
+          types: parse_types(json_map["types"]),
+          moves: parse_moves(json_map["moves"]),
+          abilities: parse_abilities(json_map["abilities"]),
+          forms: parse_forms(json_map["forms"]),
+          stats: parse_stats(json_map["stats"]),
+          img: get_image_url(json_map),
+          height: json_map["height"],
+          weight: json_map["weight"]
+        }
+
+        {:ok, pokemon}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  # Helper functions for parsing nested data
+  defp parse_types(types), do: Enum.map(types, & &1["type"]["name"])
+  defp parse_moves(moves), do: Enum.map(moves, & &1["move"]["name"])
+  defp parse_abilities(abilities), do: Enum.map(abilities, & &1["ability"]["name"])
+  defp parse_forms(forms), do: Enum.map(forms, & &1["name"])
+
+  defp parse_stats(stats) do
+    Enum.reduce(stats, %{}, fn stat, acc ->
+      stat_name = stat["stat"]["name"]
+      base_stat = stat["base_stat"]
+      Map.put(acc, stat_name, base_stat)
+    end)
+  end
+
+  defp get_image_url(json_map) do
+    json_map
+    |> Map.get("sprites", %{})
+    |> Map.get("other", %{})
+    |> Map.get("official-artwork", %{})
+    |> Map.get("front_default")
   end
 end
